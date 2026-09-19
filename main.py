@@ -1,8 +1,8 @@
 import os
+import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import google.generativeai as genai
 
 app = FastAPI()
 
@@ -15,8 +15,6 @@ app.add_middleware(
 )
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY.strip())
 
 class MessageRequest(BaseModel):
     message: str
@@ -30,17 +28,37 @@ def chat(req: MessageRequest):
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY não configurada no Render.")
     
+    clean_key = GEMINI_API_KEY.strip()
+    
+    # URL da API REST oficial do Gemini
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
+    
+    payload = {
+        "contents": [{
+            "parts": [{
+                "text": (
+                    "Tu és um Assistente Virtual especializado em Suporte de TI e computadores. "
+                    "Responde de forma clara e objetiva à seguinte dúvida do utilizador: "
+                    f"{req.message}"
+                )
+            }]
+        }]
+    }
+    
+    headers = {"Content-Type": "application/json"}
+    
     try:
-        # Tenta o modelo principal
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(req.message)
-        return {"response": response.text}
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        data = response.json()
+        
+        if response.status_code != 200:
+            error_msg = data.get("error", {}).get("message", "Erro desconhecido na API do Gemini")
+            raise HTTPException(status_code=500, detail=f"Erro da API Google ({response.status_code}): {error_msg}")
+            
+        ai_response = data["candidates"][0]["content"]["parts"][0]["text"]
+        return {"response": ai_response}
+        
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        # Fallback para o modelo alternativo caso o 1.5-flash falhe
-        try:
-            model_fallback = genai.GenerativeModel("gemini-pro")
-            response = model_fallback.generate_content(req.message)
-            return {"response": response.text}
-        except Exception as err_fallback:
-            print(f"ERRO DETALHADO NO BACKEND: {str(e)} | FALLBACK: {str(err_fallback)}")
-            raise HTTPException(status_code=500, detail=f"Erro na IA: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro de conexão no backend: {str(e)}")
