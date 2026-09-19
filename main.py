@@ -30,7 +30,6 @@ def chat(req: MessageRequest):
     
     clean_key = GEMINI_API_KEY.strip()
     
-    # A chave TEM de ir na URL (?key=)
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={clean_key}"
     
     payload = {
@@ -41,13 +40,13 @@ def chat(req: MessageRequest):
         }]
     }
     
-    # ATENÇÃO: Apenas Content-Type no header. NUNCA inclua Authorization/Bearer.
     headers = {"Content-Type": "application/json"}
     
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=30)
         data = response.json()
         
+        # Corrigido o operador para !=
         if response.status_code != 200:
             print("ERRO DETALHADO DA GOOGLE:", data)
             error_msg = data.get("error", {}).get("message", "Erro na API do Gemini")
