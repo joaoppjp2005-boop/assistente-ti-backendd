@@ -30,7 +30,7 @@ def chat(req: MessageRequest):
     
     clean_key = GEMINI_API_KEY.strip()
     
-    # Rota REST usando o modelo ativo gemini-2.5-flash
+    # A chave TEM de ir na URL (?key=)
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={clean_key}"
     
     payload = {
@@ -41,6 +41,7 @@ def chat(req: MessageRequest):
         }]
     }
     
+    # ATENÇÃO: Apenas Content-Type no header. NUNCA inclua Authorization/Bearer.
     headers = {"Content-Type": "application/json"}
     
     try:
