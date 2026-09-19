@@ -19,16 +19,21 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 class MessageRequest(BaseModel):
     message: str
 
+@app.get("/")
+def read_root():
+    return {"status": "Backend online!"}
+
 @app.post("/chat")
 def chat(req: MessageRequest):
     if not GEMINI_API_KEY:
         return {"response": "Erro: GEMINI_API_KEY não configurada no Render."}
     
-    genai.configure(api_key=GEMINI_API_KEY.strip())
+    clean_key = GEMINI_API_KEY.strip()
+    genai.configure(api_key=clean_key)
     
     try:
-        # Tenta usar diretamente o gemini-2.5-flash
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        # Modelo atualizado conforme indicação da API Google
+        model = genai.GenerativeModel("gemini-3.6-flash")
         
         prompt = f"Responda como um assistente de TI profissional e direto: {req.message}"
         response = model.generate_content(prompt)
