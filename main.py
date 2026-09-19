@@ -30,17 +30,13 @@ def chat(req: MessageRequest):
     
     clean_key = GEMINI_API_KEY.strip()
     
-    # URL da API REST oficial do Gemini
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
+    # Rota REST usando o modelo ativo gemini-2.5-flash
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={clean_key}"
     
     payload = {
         "contents": [{
             "parts": [{
-                "text": (
-                    "Tu és um Assistente Virtual especializado em Suporte de TI e computadores. "
-                    "Responde de forma clara e objetiva à seguinte dúvida do utilizador: "
-                    f"{req.message}"
-                )
+                "text": f"Responda como um assistente de TI: {req.message}"
             }]
         }]
     }
@@ -52,8 +48,9 @@ def chat(req: MessageRequest):
         data = response.json()
         
         if response.status_code != 200:
-            error_msg = data.get("error", {}).get("message", "Erro desconhecido na API do Gemini")
-            raise HTTPException(status_code=500, detail=f"Erro da API Google ({response.status_code}): {error_msg}")
+            print("ERRO DETALHADO DA GOOGLE:", data)
+            error_msg = data.get("error", {}).get("message", "Erro na API do Gemini")
+            raise HTTPException(status_code=500, detail=f"Erro da API Google: {error_msg}")
             
         ai_response = data["candidates"][0]["content"]["parts"][0]["text"]
         return {"response": ai_response}
@@ -61,4 +58,5 @@ def chat(req: MessageRequest):
     except HTTPException as he:
         raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro de conexão no backend: {str(e)}")
+        print("EXCECAO NO SERVIDOR:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
