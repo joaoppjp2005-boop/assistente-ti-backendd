@@ -1,8 +1,8 @@
 import os
-import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import google.generativeai as genai
 
 app = FastAPI()
 
@@ -29,30 +29,26 @@ def chat(req: MessageRequest):
         return {"response": "Erro: GEMINI_API_KEY não configurada no Render."}
     
     clean_key = GEMINI_API_KEY.strip()
+    genai.configure(api_key=clean_key)
     
-    # Modelo oficial corrigido: gemini-1.5-flash
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
+    # Lista de modelos para tentar (do mais recente para o mais genérico)
+    models_to_try = [
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash",
+        "gemini-pro",
+        "models/gemini-1.5-flash"
+    ]
     
-    payload = {
-        "contents": [{
-            "parts": [{
-                "text": f"Responda como um assistente de TI de forma clara e objetiva: {req.message}"
-            }]
-        }]
-    }
-    
-    headers = {"Content-Type": "application/json"}
-    
-    try:
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
-        data = response.json()
-        
-        if response.status_code != 200:
-            error_msg = data.get("error", {}).get("message", "Erro desconhecido na API do Gemini")
-            return {"response": f"Erro da Google ({response.status_code}): {error_msg}"}
+    last_error = ""
+    for model_name in models_to_try:
+        try:
+            model = genai.GenerativeModel(model_name)
+            prompt = f"Responda como um assistente de TI profissional e direto: {req.message}"
+            response = model.generate_content(prompt)
+            if response and response.text:
+                return {"response": response.text}
+        except Exception as e:
+            last_error = str(e)
+            continue
             
-        ai_response = data["candidates"][0]["content"]["parts"][0]["text"]
-        return {"response": ai_response}
-        
-    except Exception as e:
-        return {"response": f"Erro interno do servidor: {str(e)}"}
+    return {"response": f"Erro na Google API ao chamar modelos: {last_error}"}
