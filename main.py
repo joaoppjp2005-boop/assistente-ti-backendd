@@ -19,29 +19,23 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 class MessageRequest(BaseModel):
     message: str
 
-@app.get("/")
-def read_root():
-    return {"status": "Backend online!"}
-
 @app.post("/chat")
 def chat(req: MessageRequest):
     if not GEMINI_API_KEY:
         return {"response": "Erro: GEMINI_API_KEY não configurada no Render."}
     
-    clean_key = GEMINI_API_KEY.strip()
-    genai.configure(api_key=clean_key)
+    genai.configure(api_key=GEMINI_API_KEY.strip())
     
-    try:
-        # Modelo atualizado conforme indicação da API Google
-        model = genai.GenerativeModel("gemini-3.6-flash")
-        
-        prompt = f"Responda como um assistente de TI profissional e direto: {req.message}"
-        response = model.generate_content(prompt)
-        
-        if response and response.text:
-            return {"response": response.text}
+    # Lista de modelos para tentar caso um atinja o limite de requisições (Quota 429)
+    models_fallback = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+    
+    for model_name in models_fallback:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(req.message)
+            if response and response.text:
+                return {"response": response.text}
+        except Exception as e:
+            continue
             
-    except Exception as e:
-        return {"response": f"Erro na Google API: {str(e)}"}
-        
-    return {"response": "Não foi possível gerar resposta."}
+    return {"response": "Limite de requisições atingido. Aguarde alguns segundos e tente novamente."}
