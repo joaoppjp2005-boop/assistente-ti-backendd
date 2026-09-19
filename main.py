@@ -19,31 +19,16 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 class MessageRequest(BaseModel):
     message: str
 
-@app.get("/")
-def read_root():
-    return {"status": "Backend online!"}
-
 @app.post("/chat")
 def chat(req: MessageRequest):
     if not GEMINI_API_KEY:
         return {"response": "Erro: GEMINI_API_KEY não configurada no Render."}
     
-    clean_key = GEMINI_API_KEY.strip()
-    genai.configure(api_key=clean_key)
+    genai.configure(api_key=GEMINI_API_KEY.strip())
     
     try:
-        # Busca automaticamente a lista de modelos suportados para a tua chave
-        available_models = []
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                available_models.append(m.name)
-        
-        if not available_models:
-            return {"response": "Erro: Nenhum modelo disponível para esta chave de API."}
-        
-        # Escolhe o primeiro modelo válido disponível (ex: gemini-2.5-flash, etc.)
-        target_model = available_models[0]
-        model = genai.GenerativeModel(target_model)
+        # Tenta usar diretamente o gemini-2.5-flash
+        model = genai.GenerativeModel("gemini-2.5-flash")
         
         prompt = f"Responda como um assistente de TI profissional e direto: {req.message}"
         response = model.generate_content(prompt)
