@@ -31,24 +31,27 @@ def chat(req: MessageRequest):
     clean_key = GEMINI_API_KEY.strip()
     genai.configure(api_key=clean_key)
     
-    # Lista de modelos para tentar (do mais recente para o mais genérico)
-    models_to_try = [
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-flash",
-        "gemini-pro",
-        "models/gemini-1.5-flash"
-    ]
-    
-    last_error = ""
-    for model_name in models_to_try:
-        try:
-            model = genai.GenerativeModel(model_name)
-            prompt = f"Responda como um assistente de TI profissional e direto: {req.message}"
-            response = model.generate_content(prompt)
-            if response and response.text:
-                return {"response": response.text}
-        except Exception as e:
-            last_error = str(e)
-            continue
+    try:
+        # Busca automaticamente a lista de modelos suportados para a tua chave
+        available_models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                available_models.append(m.name)
+        
+        if not available_models:
+            return {"response": "Erro: Nenhum modelo disponível para esta chave de API."}
+        
+        # Escolhe o primeiro modelo válido disponível (ex: gemini-2.5-flash, etc.)
+        target_model = available_models[0]
+        model = genai.GenerativeModel(target_model)
+        
+        prompt = f"Responda como um assistente de TI profissional e direto: {req.message}"
+        response = model.generate_content(prompt)
+        
+        if response and response.text:
+            return {"response": response.text}
             
-    return {"response": f"Erro na Google API ao chamar modelos: {last_error}"}
+    except Exception as e:
+        return {"response": f"Erro na Google API: {str(e)}"}
+        
+    return {"response": "Não foi possível gerar resposta."}
