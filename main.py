@@ -26,16 +26,17 @@ def read_root():
 @app.post("/chat")
 def chat(req: MessageRequest):
     if not GEMINI_API_KEY:
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY não configurada no Render.")
+        return {"response": "Erro: GEMINI_API_KEY não configurada no Render."}
     
     clean_key = GEMINI_API_KEY.strip()
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={clean_key}"
+    # Modelo oficial corrigido: gemini-1.5-flash
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
     
     payload = {
         "contents": [{
             "parts": [{
-                "text": f"Responda como um assistente de TI: {req.message}"
+                "text": f"Responda como um assistente de TI de forma clara e objetiva: {req.message}"
             }]
         }]
     }
@@ -46,17 +47,12 @@ def chat(req: MessageRequest):
         response = requests.post(url, json=payload, headers=headers, timeout=30)
         data = response.json()
         
-        # Corrigido o operador para !=
         if response.status_code != 200:
-            print("ERRO DETALHADO DA GOOGLE:", data)
-            error_msg = data.get("error", {}).get("message", "Erro na API do Gemini")
-            raise HTTPException(status_code=500, detail=f"Erro da API Google: {error_msg}")
+            error_msg = data.get("error", {}).get("message", "Erro desconhecido na API do Gemini")
+            return {"response": f"Erro da Google ({response.status_code}): {error_msg}"}
             
         ai_response = data["candidates"][0]["content"]["parts"][0]["text"]
         return {"response": ai_response}
         
-    except HTTPException as he:
-        raise he
     except Exception as e:
-        print("EXCECAO NO SERVIDOR:", str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"response": f"Erro interno do servidor: {str(e)}"}
