@@ -32,21 +32,22 @@ def chat(req: MessageRequest):
         clean_key = GEMINI_API_KEY.strip()
         genai.configure(api_key=clean_key)
         
-        # Testamos primeiro modelos mais universais para garantir compatibilidade
-        models_to_try = ["gemini-pro", "gemini-1.5-flash-latest", "gemini-1.5-pro"]
+        # Procura os modelos disponíveis na sua chave
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        last_error = ""
-        for model_name in models_to_try:
-            try:
-                model = genai.GenerativeModel(model_name)
-                response = model.generate_content(req.message)
-                if response and response.text:
-                    return {"response": response.text}
-            except Exception as e:
-                last_error = str(e)
-                continue
-                
-        return {"response": f"Erro na API do Gemini: {last_error}"}
+        if not available_models:
+            return {"response": "Nenhum modelo compatível encontrado para esta API Key."}
+            
+        # Seleciona o primeiro modelo disponível
+        chosen_model = available_models[0]
+        model = genai.GenerativeModel(chosen_model)
+        
+        response = model.generate_content(req.message)
+        
+        if response and response.text:
+            return {"response": response.text}
+        else:
+            return {"response": "Não foi possível gerar uma resposta do modelo."}
             
     except Exception as e:
-        return {"response": f"Erro ao processar a requisição: {str(e)}"}
+        return {"response": f"Erro na API do Gemini: {str(e)}"}
