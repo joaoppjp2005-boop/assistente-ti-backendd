@@ -32,10 +32,10 @@ def chat(req: MessageRequest):
     genai.configure(api_key=clean_key)
     
     try:
-        # Modelo atual da Google
+        # Usa o modelo ativo gemini-3.6-flash sem restrições de suporte de TI
         model = genai.GenerativeModel("gemini-3.6-flash")
         
-        # Envia a mensagem diretamente para o modelo sem filtros de TI
+        # Envia a mensagem do utilizador diretamente
         response = model.generate_content(req.message)
         
         if response and response.text:
