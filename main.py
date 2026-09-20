@@ -32,15 +32,8 @@ def chat(req: MessageRequest):
         clean_key = GEMINI_API_KEY.strip()
         genai.configure(api_key=clean_key)
         
-        # Procura os modelos disponíveis na sua chave
-        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        
-        if not available_models:
-            return {"response": "Nenhum modelo compatível encontrado para esta API Key."}
-            
-        # Seleciona o primeiro modelo disponível
-        chosen_model = available_models[0]
-        model = genai.GenerativeModel(chosen_model)
+        # A usar exatamente o modelo recomendado pela Google no erro
+        model = genai.GenerativeModel("gemini-3.6-flash")
         
         response = model.generate_content(req.message)
         
