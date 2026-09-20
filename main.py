@@ -33,7 +33,7 @@ def chat(req: MessageRequest):
         client = genai.Client(api_key=GEMINI_API_KEY.strip())
         
         # Lista de modelos para tentar (o 1.5-flash possui cota diária alta)
-        models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
+        models_to_try = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-3.6-flash"]
         
         for model_id in models_to_try:
             try:
