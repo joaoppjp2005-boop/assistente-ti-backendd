@@ -31,19 +31,16 @@ def chat(req: MessageRequest):
     clean_key = GEMINI_API_KEY.strip()
     genai.configure(api_key=clean_key)
     
-    try:
-        # Usa o gemini-1.5-flash que é ultra-rápido na geração de texto
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        
-        response = model.generate_content(req.message)
-        
-        if response and response.text:
-            return {"response": response.text}
+    # Lista de modelos alternativos para garantir resposta rápida
+    models = ["gemini-1.5-flash", "gemini-1.5-pro"]
+    
+    for model_name in models:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(req.message)
+            if response and response.text:
+                return {"response": response.text}
+        except Exception as e:
+            continue
             
-    except Exception as e:
-        error_str = str(e)
-        if "429" in error_str or "Quota exceeded" in error_str:
-            return {"response": "Limite de requisições temporariamente atingido. Aguarde cerca de 1 minuto e tente novamente."}
-        return {"response": f"Erro na Google API: {error_str}"}
-        
-    return {"response": "Não foi possível gerar resposta."}
+    return {"response": "Não foi possível obter resposta no momento. Tente novamente em instantes."}
