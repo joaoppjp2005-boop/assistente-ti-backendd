@@ -31,8 +31,8 @@ def chat(req: MessageRequest):
     clean_key = GEMINI_API_KEY.strip()
     genai.configure(api_key=clean_key)
     
-    # Modelos recomendados pela Google API
-    models_to_try = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+    # Modelos recomendados em ordem de prioridade
+    models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
     
     last_error = ""
     for model_name in models_to_try:
@@ -45,5 +45,4 @@ def chat(req: MessageRequest):
             last_error = str(e)
             continue
             
-    # Retorna o erro exato que a API da Google devolveu
     return {"response": f"Erro na API do Gemini: {last_error}"}
