@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import google.generativeai as genai
+from google import genai
 
 app = FastAPI()
 
@@ -19,23 +19,34 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 class MessageRequest(BaseModel):
     message: str
 
+@app.get("/")
+def read_root():
+    return {"status": "Backend online!"}
+
 @app.post("/chat")
 def chat(req: MessageRequest):
     if not GEMINI_API_KEY:
         return {"response": "Erro: GEMINI_API_KEY não configurada no Render."}
     
-    genai.configure(api_key=GEMINI_API_KEY.strip())
-    
-    # Lista de modelos para tentar caso um atinja o limite de requisições (Quota 429)
-    models_fallback = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
-    
-    for model_name in models_fallback:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(req.message)
-            if response and response.text:
-                return {"response": response.text}
-        except Exception as e:
-            continue
-            
-    return {"response": "Limite de requisições atingido. Aguarde alguns segundos e tente novamente."}
+    try:
+        # Inicializa o cliente oficial da Google
+        client = genai.Client(api_key=GEMINI_API_KEY.strip())
+        
+        # Lista de modelos para tentar (o 1.5-flash possui cota diária alta)
+        models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
+        
+        for model_id in models_to_try:
+            try:
+                response = client.models.generate_content(
+                    model=model_id,
+                    contents=req.message,
+                )
+                if response and response.text:
+                    return {"response": response.text}
+            except Exception:
+                continue
+                
+        return {"response": "Limite de requisições temporariamente atingido. Aguarde cerca de 1 minuto e tente novamente."}
+        
+    except Exception as e:
+        return {"response": f"Erro no serviço da API: {str(e)}"}
