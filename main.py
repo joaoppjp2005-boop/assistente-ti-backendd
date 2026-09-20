@@ -1,11 +1,12 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import google.generativeai as genai
 
 app = FastAPI()
 
+# Permite chamadas de qualquer origem (Vercel, local, etc.)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,21 +27,22 @@ def read_root():
 @app.post("/chat")
 def chat(req: MessageRequest):
     if not GEMINI_API_KEY:
-        return {"response": "Erro: GEMINI_API_KEY não configurada no Render."}
+        return {"response": "Erro: GEMINI_API_KEY não foi configurada no Render."}
     
-    clean_key = GEMINI_API_KEY.strip()
-    genai.configure(api_key=clean_key)
-    
-    # Lista de modelos alternativos para garantir resposta rápida
-    models = ["gemini-1.5-flash", "gemini-1.5-pro"]
-    
-    for model_name in models:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(req.message)
-            if response and response.text:
-                return {"response": response.text}
-        except Exception as e:
-            continue
+    try:
+        clean_key = GEMINI_API_KEY.strip()
+        genai.configure(api_key=clean_key)
+        
+        # Modelo mais rápido e moderno
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        response = model.generate_content(req.message)
+        
+        if response and response.text:
+            return {"response": response.text}
+        else:
+            return {"response": "Não foi possível obter resposta do Gemini."}
             
-    return {"response": "Não foi possível obter resposta no momento. Tente novamente em instantes."}
+    except Exception as e:
+        print("Erro interno:", str(e))
+        return {"response": f"Erro na API do Gemini: {str(e)}"}
