@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from google import genai
+import google.generativeai as genai
 
 app = FastAPI()
 
@@ -28,25 +28,23 @@ def chat(req: MessageRequest):
     if not GEMINI_API_KEY:
         return {"response": "Erro: GEMINI_API_KEY não configurada no Render."}
     
+    clean_key = GEMINI_API_KEY.strip()
+    genai.configure(api_key=clean_key)
+    
     try:
-        # Inicializa o cliente oficial da Google
-        client = genai.Client(api_key=GEMINI_API_KEY.strip())
+        # Modelo atual da Google
+        model = genai.GenerativeModel("gemini-3.6-flash")
         
-        # Lista de modelos para tentar (o 1.5-flash possui cota diária alta)
-        models_to_try = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-3.6-flash"]
+        # Envia a mensagem diretamente para o modelo sem filtros de TI
+        response = model.generate_content(req.message)
         
-        for model_id in models_to_try:
-            try:
-                response = client.models.generate_content(
-                    model=model_id,
-                    contents=req.message,
-                )
-                if response and response.text:
-                    return {"response": response.text}
-            except Exception:
-                continue
-                
-        return {"response": "Limite de requisições temporariamente atingido. Aguarde cerca de 1 minuto e tente novamente."}
-        
+        if response and response.text:
+            return {"response": response.text}
+            
     except Exception as e:
-        return {"response": f"Erro no serviço da API: {str(e)}"}
+        error_str = str(e)
+        if "429" in error_str or "Quota exceeded" in error_str:
+            return {"response": "Limite de requisições temporariamente atingido. Aguarde cerca de 1 minuto e tente novamente."}
+        return {"response": f"Erro na Google API: {error_str}"}
+        
+    return {"response": "Não foi possível gerar resposta."}
